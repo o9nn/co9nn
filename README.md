@@ -122,6 +122,14 @@ Uses attention allocation to guide MOSES learning:
 - Feedback loop from learning outcomes to attention
 - **See:** `docs/attention-guided-learning.md`
 
+### 4. Inference-Driven Pattern Discovery (✅ Implemented)
+
+Uses PLN to guide pattern mining with semantic constraints:
+- Define semantic constraints in PLN
+- Validate patterns via reasoning
+- Iterative pattern refinement
+- **See:** `docs/inference-driven-pattern-discovery.md`
+
 ### Unified Synergy Check
 
 Run the following script to build all components, and perform mock interoperability and demo tests:
