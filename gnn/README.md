@@ -45,6 +45,26 @@ Based on WinKoGNN architecture, adapted for OCC integration with:
 pip install numpy
 ```
 
+## CogTorch Integration
+
+The GNN module can now leverage **CogTorch** for advanced neural network operations:
+
+```python
+from gnn import AtomSpaceBridge
+from cogtorch import nnn, nn, torch7
+
+# Convert AtomSpace hypergraph to nested tensors
+bridge = AtomSpaceBridge(backend='mock')
+bridge.create_sample_knowledge_graph()
+
+# Process with CogTorch nested neural networks
+nested_representation = nnn.NestedTensor([...])  # From AtomSpace structure
+tree_lstm = nnn.TreeLSTM(inputSize=128, hiddenSize=256)
+processed = tree_lstm.forward(nested_representation)
+```
+
+See [CogTorch documentation](../cogtorch/README.md) for more details.
+
 ## Quick Start
 
 ```python
