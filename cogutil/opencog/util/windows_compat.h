@@ -14,6 +14,47 @@
 #ifdef _WIN32
 
 // ============================================================================
+// IMPORTANT: Include Order Matters!
+// winsock2.h MUST be included before windows.h to avoid conflicts
+// ============================================================================
+
+// Include winsock2.h first - it defines struct timeval
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <windows.h>
+
+// Link with Winsock library
+#pragma comment(lib, "ws2_32.lib")
+
+// ============================================================================
+// Windows Macro Conflicts - MUST be handled before including other headers
+// ============================================================================
+
+// Windows headers define ERROR as a macro (value 0) which conflicts with
+// our Logger::Level::ERROR enum. We save and undefine it here.
+#ifdef ERROR
+#define _WINDOWS_ERROR_MACRO ERROR
+#undef ERROR
+#endif
+
+// Windows headers may also define these
+#ifdef WARN
+#undef WARN
+#endif
+
+#ifdef INFO
+#undef INFO
+#endif
+
+#ifdef DEBUG
+#undef DEBUG
+#endif
+
+// ============================================================================
 // Math Constants
 // ============================================================================
 // Define _USE_MATH_DEFINES before including math headers to get M_PI, etc.
@@ -30,6 +71,22 @@
 
 #ifndef M_E
 #define M_E 2.71828182845904523536
+#endif
+
+#ifndef M_LOG2E
+#define M_LOG2E 1.44269504088896340736
+#endif
+
+#ifndef M_LN2
+#define M_LN2 0.693147180559945309417
+#endif
+
+#ifndef M_LN10
+#define M_LN10 2.30258509299404568402
+#endif
+
+#ifndef M_SQRT2
+#define M_SQRT2 1.41421356237309504880
 #endif
 
 // ============================================================================
@@ -105,16 +162,16 @@
 
 #include <time.h>
 #include <sys/timeb.h>
-#include <windows.h>
 
 // gettimeofday() replacement for Windows
+// Note: struct timeval is now defined via winsock2.h
 #ifndef HAVE_GETTIMEOFDAY
 struct timezone {
     int tz_minuteswest;
     int tz_dsttime;
 };
 
-inline int gettimeofday(struct timeval* tv, struct timezone* tz) {
+static __forceinline int gettimeofday(struct timeval* tv, struct timezone* tz) {
     if (tv) {
         FILETIME ft;
         GetSystemTimeAsFileTime(&ft);
@@ -127,7 +184,6 @@ inline int gettimeofday(struct timeval* tv, struct timezone* tz) {
         
         // FILETIME is in 100-nanosecond intervals since Jan 1, 1601
         // Unix epoch is Jan 1, 1970
-        // Difference is 116444736000000000 * 100ns = 11644473600 seconds
         tmpres -= 116444736000000000ULL;
         tmpres /= 10;  // Convert to microseconds
         
@@ -149,6 +205,43 @@ inline int gettimeofday(struct timeval* tv, struct timezone* tz) {
     return 0;
 }
 #endif // HAVE_GETTIMEOFDAY
+
+// ============================================================================
+// POSIX Function Macros - Use macros to guarantee visibility in all TUs
+// ============================================================================
+
+// usleep() - sleep for microseconds
+// Windows Sleep() takes milliseconds, so convert
+// Using a macro ensures the function is always resolved at compile time
+static __forceinline void _oc_usleep_impl(unsigned int usec) {
+    Sleep((usec + 999) / 1000);  // Round up to avoid zero sleep
+}
+#ifndef usleep
+#define usleep(usec) _oc_usleep_impl(usec)
+#endif
+
+// gmtime_r() - thread-safe version of gmtime
+// Windows has gmtime_s with reversed parameter order
+static __forceinline struct tm* _oc_gmtime_r_impl(const time_t* timer, struct tm* buf) {
+    if (gmtime_s(buf, timer) == 0) {
+        return buf;
+    }
+    return nullptr;
+}
+#ifndef gmtime_r
+#define gmtime_r(timer, buf) _oc_gmtime_r_impl(timer, buf)
+#endif
+
+// fdatasync() - sync file data to disk (not metadata)
+// Windows doesn't distinguish between data and metadata sync
+// Use _commit() which is similar to fsync()
+#include <io.h>
+static __forceinline int _oc_fdatasync_impl(int fd) {
+    return _commit(fd);
+}
+#ifndef fdatasync
+#define fdatasync(fd) _oc_fdatasync_impl(fd)
+#endif
 
 // ============================================================================
 // String Functions
@@ -201,13 +294,8 @@ inline int gettimeofday(struct timeval* tv, struct timezone* tz) {
 #endif
 
 // ============================================================================
-// Network Functions (if needed)
+// Network Functions Helper
 // ============================================================================
-
-#ifdef NEED_WINSOCK
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#pragma comment(lib, "ws2_32.lib")
 
 // Initialize Winsock (call once at program start)
 inline int init_winsock() {
@@ -219,7 +307,6 @@ inline int init_winsock() {
 inline void cleanup_winsock() {
     WSACleanup();
 }
-#endif // NEED_WINSOCK
 
 #endif // _WIN32
 

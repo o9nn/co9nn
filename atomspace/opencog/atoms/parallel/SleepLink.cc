@@ -21,28 +21,16 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+// Windows compatibility - must be included first
+#ifdef _WIN32
+#include <opencog/util/windows_compat.h>
+#else
+#include <sys/time.h>
+#include <unistd.h>
+#endif
+
 #include <math.h>
 #include <time.h>
-#ifdef _WIN32
-#ifdef _WIN32
-#include <io.h>
-#include <process.h>
-#else
-#include <winsock2.h>
-#endif
-#else
-#ifdef _WIN32
-#include <winsock2.h>
-#ifdef _WIN32
-#include <io.h>
-#include <process.h>
-#else
-#else
-#endif
-#include <sys/time.h>
-#endif
-#endif
-#include <unistd.h>
 
 #include <opencog/atoms/core/NumberNode.h>
 

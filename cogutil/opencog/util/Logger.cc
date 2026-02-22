@@ -27,6 +27,13 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+// Windows compatibility - must be included first before any other headers
+// windows_compat.h provides macro-based POSIX replacements (usleep, fdatasync,
+// gmtime_r, gettimeofday) that are guaranteed visible in all translation units.
+#ifdef _WIN32
+#include "windows_compat.h"
+#endif // _WIN32
+
 #if defined(HAVE_GNU_BACKTRACE)
 #include <cxxabi.h>
 #include <execinfo.h>
@@ -40,13 +47,8 @@
 #include <time.h>
 
 #ifdef _WIN32
-#include "windows_compat.h"
 #include <string.h>
-#include <io.h>
 #include <process.h>
-#include <winsock2.h>
-#undef ERROR
-#undef DEBUG
 #else
 #include <strings.h>
 #include <unistd.h>
@@ -62,7 +64,7 @@
 
 #include "Logger.h"
 
-#ifdef __APPLE__
+#if defined(__APPLE__) && !defined(_WIN32)
 #define fdatasync fsync
 #endif
 

@@ -25,6 +25,11 @@
 #ifndef _OC_ASYNC_WRITER_H
 #define _OC_ASYNC_WRITER_H
 
+// Windows compatibility - must be included first
+#ifdef _WIN32
+#include <opencog/util/windows_compat.h>
+#endif
+
 #include <atomic>
 #include <chrono>
 #include <mutex>
@@ -272,7 +277,7 @@ void async_caller<Writer, Element>::stop_writer_threads()
 	// might not be totally empty; some dregs might remain.
 	// Drain it now, single-threadedly.
 	_store_queue.cancel_reset();
-	while (not _store_queue.is_empty())
+	while (!_store_queue.is_empty())
 	{
 		Element elt = _store_queue.value_pop();
 		(_writer->*_do_write)(elt);
