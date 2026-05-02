@@ -54,6 +54,12 @@ ADD_DEFINITIONS(-DPROJECT_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
 # Add the 'lib' dir to cmake's module search path
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/lib/")
 
+# Add monorepo-aware module paths
+list(APPEND CMAKE_MODULE_PATH
+	"${CMAKE_SOURCE_DIR}/cogutil/cmake"
+	"${CMAKE_SOURCE_DIR}/atomspace/cmake"
+	"${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 # Cogutil
 FIND_PACKAGE(CogUtil 2.1.0 CONFIG REQUIRED)
 IF (COGUTIL_FOUND)
@@ -67,10 +73,10 @@ ENDIF (COGUTIL_FOUND)
 # add the 'cmake' directory from cogutil to search path
 list(APPEND CMAKE_MODULE_PATH  ${COGUTIL_DATA_DIR}/cmake)
 
-include(${COGUTIL_DATA_DIR}/cmake/OpenCogGccOptions.cmake)
-include(${COGUTIL_DATA_DIR}/cmake/OpenCogLibOptions.cmake)
-include(${COGUTIL_DATA_DIR}/cmake/OpenCogInstallOptions.cmake)
-include(${COGUTIL_DATA_DIR}/cmake/Summary.cmake)
+include(OpenCogGccOptions)
+include(OpenCogLibOptions)
+include(OpenCogInstallOptions)
+include(Summary)
 
 # ===================================================================
 # Check for existance of various required, optional packages.
@@ -158,7 +164,9 @@ ENDIF (VALGRIND_FOUND)
 
 # Set default include paths.
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}
-	${COGUTIL_INCLUDE_DIR} ${ATOMSPACE_INCLUDE_DIR})
+	${COGUTIL_INCLUDE_DIR} ${ATOMSPACE_INCLUDE_DIR}
+	${ATOMSPACE_STORAGE_INCLUDE_DIR}
+	${CMAKE_BINARY_DIR}/atomspace-storage)
 
 INCLUDE(OpenCogMacros)
 INCLUDE(OpenCogGuile)
@@ -177,19 +185,24 @@ IF(HAVE_SERVER)
 	# ADD_SUBDIRECTORY(examples EXCLUDE_FROM_ALL)
 	ADD_SUBDIRECTORY(examples)
 
-	ADD_CUSTOM_TARGET(examples
-		COMMAND $(MAKE)
-		WORKING_DIRECTORY examples
-		COMMENT "Building examples"
-	)
+	IF (NOT TARGET examples)
+		ADD_CUSTOM_TARGET(examples
+			COMMAND $(MAKE)
+			WORKING_DIRECTORY examples
+			COMMENT "Building examples"
+		)
+	ENDIF()
 ENDIF(HAVE_SERVER)
 
 IF (CXXTEST_FOUND AND HAVE_SERVER)
-	ADD_CUSTOM_TARGET(tests)
+	IF (NOT TARGET tests)
+		ADD_CUSTOM_TARGET(tests)
+	ENDIF (NOT TARGET tests)
 	ADD_SUBDIRECTORY(tests EXCLUDE_FROM_ALL)
 	IF (CMAKE_BUILD_TYPE STREQUAL "Coverage")
 		# doing coverage stuff while running tests if this is the Coverage build
-		ADD_CUSTOM_TARGET(check
+		IF (NOT TARGET check)
+			ADD_CUSTOM_TARGET(check
 			# TODO lcov should be found by cmake first
 			# TODO set it up so that we can pick to run coverage per test, or
 			# combined across all tests (the latter is MUCH faster). Use a define?
@@ -202,15 +215,18 @@ IF (CXXTEST_FOUND AND HAVE_SERVER)
 			# Note: this should now be run separately...
 			#COMMAND ${PROJECT_SOURCE_DIR}/scripts/combine_lcov.sh
 			COMMENT "Running tests with coverage..."
-		)
+			)
+		ENDIF (NOT TARGET check)
 	ELSE (CMAKE_BUILD_TYPE STREQUAL "Coverage")
 		# If this is a build with coverage enabled then test normally
-		ADD_CUSTOM_TARGET(check
+		IF (NOT TARGET check)
+			ADD_CUSTOM_TARGET(check
 			DEPENDS tests
 			WORKING_DIRECTORY tests
 			COMMAND ${CMAKE_CTEST_COMMAND} --force-new-ctest-process --output-on-failure $(ARGS)
 			COMMENT "Running tests..."
-		)
+			)
+		ENDIF (NOT TARGET check)
 	ENDIF (CMAKE_BUILD_TYPE STREQUAL "Coverage")
 ENDIF (CXXTEST_FOUND AND HAVE_SERVER)
 
